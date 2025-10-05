@@ -1,8 +1,14 @@
 using ClosedXML.Excel;
+using DocumentFormat.OpenXml.Drawing.Diagrams;
 using TestTask.Models;
 
 public static class ExcelReader
 {
+    private static void ErrorWriter(int rowNumber, int columnNumber, string value, string place)
+    { 
+        Console.WriteLine($"Error in raw {rowNumber}, column {columnNumber}: value {value} is not a number.");
+        Console.WriteLine($"Problem place is {place}. Used placeholder -1");
+    }
     public static List<Client> Read(string filePath)
     {
         // Vytvoreni dictionary pro efektivnejsi vyhledavani existujicich
@@ -13,7 +19,7 @@ public static class ExcelReader
         var sheet = workbook.Worksheets.First();
 
         //Hledani zacatecneho roku v tabulce
-        var header = sheet.Cell(1, 4).GetValue<string>(); 
+        var header = sheet.Cell(1, 4).GetValue<string>();
         int startYear;
 
         // Snaha parsingu pokud format je rrrr-mm
@@ -32,11 +38,16 @@ public static class ExcelReader
                 month[y * 12 + m] = $"{startYear + y}-{(m + 1):D2}";
 
         // Prochazime radky, zaciname s 2.
-        foreach (var row in sheet.RowsUsed().Skip(1))
+        foreach (IXLRow row in sheet.RowsUsed().Skip(1))
         {
             // Parse cislo poprve a overeni jestli klinta s cislem uz mame
-            var clientIC = row.Cell(2).GetValue<string>();
-            
+            string clientIC;
+            try { clientIC = row.Cell(2).GetValue<string>(); }
+            catch
+            {
+                throw new Exception($"IC is corrupted on {row.RowNumber}th row, application stoped");
+            }
+
             if (!clientsDict.TryGetValue(clientIC, out var client))
             {
                 // Pokud takoveho klienta nemame, tak uz dava smysl odebirat jmeno
@@ -51,8 +62,8 @@ public static class ExcelReader
             catch
             {
                 orderName = -1;
-                Console.WriteLine($"Error in raw {row.RowNumber()}, column {3}: value '{row.Cell(3).GetValue<string>()}' is not a number.");
-                Console.WriteLine("Used placeholder -1");
+                ErrorWriter(row.RowNumber(), 3, row.Cell(3).GetValue<string>(), "order name");
+                
             }
             var order = new Order { OrderName = orderName };
 
@@ -65,16 +76,15 @@ public static class ExcelReader
                 catch
                 {
                     numPieces = -1;
-                    Console.WriteLine($"Error in raw {row.RowNumber()}, column {4 + i}: value '{cell.GetValue<string>()}' is not a number.");
-                    Console.WriteLine("Used placeholder -1");
+                    ErrorWriter(row.RowNumber(), 4 + i, cell.GetValue<string>(), "quantity of pieces");
                 }
-                
+
                 order.ProducedPieces.Add(new ProducedPieces { Period = month[i], NumPieces = numPieces });
             }
             // Prirazeni zakazky
             client.Orders.Add(order);
         }
 
-    return clientsDict.Values.ToList();
+        return clientsDict.Values.ToList();
     }
 }
