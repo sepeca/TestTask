@@ -50,7 +50,8 @@ public static class ExcelReader
 
             for (int i = 0; i < month.Length; i++)
             {
-                var numPieces = row.Cell(4 + i).GetValue<int>();
+                var cell = row.Cell(4 + i);
+                var numPieces = cell.GetValue<int>();
                 order.ProducedPieces.Add(new ProducedPieces { Period = month[i], NumPieces = numPieces });
             }
             // Prirazeni zakazky
