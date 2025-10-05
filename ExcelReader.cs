@@ -5,7 +5,7 @@ public static class ExcelReader
 {
     public static List<Client> Read(string filePath)
     {
-        // Vytvoreni dictionary pro efektivnejsi vyhledavani existujicich klientu
+        // Vytvoreni dictionary pro efektivnejsi vyhledavani existujicich
         var clientsDict = new Dictionary<string, Client>();
 
         // Prevzeti xlsx
@@ -45,13 +45,30 @@ public static class ExcelReader
                 clientsDict[clientIC] = client;
             }
             // Vytvoreni zakazky s podrobnostmi
-            var orderName = row.Cell(3).GetValue<int>();
+            int orderName;
+            //Zpracovani chyby ve pripade, ze je prazdna/spatna hodnota v bunce 
+            try { orderName = row.Cell(3).GetValue<int>(); }
+            catch
+            {
+                orderName = -1;
+                Console.WriteLine($"Error in raw {row.RowNumber()}, column {3}: value '{row.Cell(3).GetValue<string>()}' is not a number.");
+                Console.WriteLine("Used placeholder -1");
+            }
             var order = new Order { OrderName = orderName };
 
             for (int i = 0; i < month.Length; i++)
             {
                 var cell = row.Cell(4 + i);
-                var numPieces = cell.GetValue<int>();
+                int numPieces;
+                //Zpracovani chyby ve pripade, ze je prazdna/spatna hodnota v bunce 
+                try { numPieces = cell.GetValue<int>(); }
+                catch
+                {
+                    numPieces = -1;
+                    Console.WriteLine($"Error in raw {row.RowNumber()}, column {4 + i}: value '{cell.GetValue<string>()}' is not a number.");
+                    Console.WriteLine("Used placeholder -1");
+                }
+                
                 order.ProducedPieces.Add(new ProducedPieces { Period = month[i], NumPieces = numPieces });
             }
             // Prirazeni zakazky
