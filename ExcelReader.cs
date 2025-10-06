@@ -1,5 +1,4 @@
 using ClosedXML.Excel;
-using DocumentFormat.OpenXml.Drawing.Diagrams;
 using TestTask.Models;
 
 public static class ExcelReader
@@ -40,14 +39,14 @@ public static class ExcelReader
         // Prochazime radky, zaciname s 2.
         foreach (IXLRow row in sheet.RowsUsed().Skip(1))
         {
-            // Parse cislo poprve a overeni jestli klinta s cislem uz mame
-            string clientIC;
-            try { clientIC = row.Cell(2).GetValue<string>(); }
-            catch
-            {
-                throw new Exception($"IC is corrupted on {row.RowNumber}th row, application stoped");
-            }
+            // Parse IC
+            string clientIC = row.Cell(2).GetValue<string>();
 
+            // Overeni jestli cislo je spravne
+            int.TryParse(clientIC, out var num);
+            if (num < 1 || num > 99999999) { throw new Exception($"IC is corrupted on {row.RowNumber()}th row"); }
+
+            //Overeni jestli klient uz nebyl vypsan
             if (!clientsDict.TryGetValue(clientIC, out var client))
             {
                 // Pokud takoveho klienta nemame, tak uz dava smysl odebirat jmeno
@@ -57,13 +56,14 @@ public static class ExcelReader
             }
             // Vytvoreni zakazky s podrobnostmi
             int orderName;
+            
             //Zpracovani chyby ve pripade, ze je prazdna/spatna hodnota v bunce 
             try { orderName = row.Cell(3).GetValue<int>(); }
             catch
             {
                 orderName = -1;
                 ErrorWriter(row.RowNumber(), 3, row.Cell(3).GetValue<string>(), "order name");
-                
+
             }
             var order = new Order { OrderName = orderName };
 
@@ -71,6 +71,7 @@ public static class ExcelReader
             {
                 var cell = row.Cell(4 + i);
                 int numPieces;
+
                 //Zpracovani chyby ve pripade, ze je prazdna/spatna hodnota v bunce 
                 try { numPieces = cell.GetValue<int>(); }
                 catch
@@ -78,7 +79,6 @@ public static class ExcelReader
                     numPieces = -1;
                     ErrorWriter(row.RowNumber(), 4 + i, cell.GetValue<string>(), "quantity of pieces");
                 }
-
                 order.ProducedPieces.Add(new ProducedPieces { Period = month[i], NumPieces = numPieces });
             }
             // Prirazeni zakazky
